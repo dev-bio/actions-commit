@@ -1,0 +1,37 @@
+name: 'Commit Action'
+description: 'Commit files to repository.'
+inputs:
+  github-token:
+    description: 'Repository access token with content write permissions.'
+    default: ${{ github.token }}
+  github-repository:
+    description: 'Repository where we commit files.'
+    default: ${{ github.repository }}
+  github-reference:
+    description: 'Commit reference to use as parent.'
+    default: ${{ github.ref }}
+  flatten:
+    description: 'Discards directory structure, placing all files in the target directory.'
+    default: false
+  force:
+    description: 'Whether to force update of the reference, may overwrite work!'
+    default: false
+  include:
+    description: 'Glob patterns for files to include.'
+    required: false
+  exclude:
+    description: 'Glob patterns for files to exclude.'
+    required: false
+  source:
+    description: 'Source directory, commits files relative to working directory if no target is specified.'
+    required: false
+  target:
+    description: 'Target directory, commits files relative to working directory if no source is specified.'
+    required: false
+  message:
+    description: 'Commit message.'
+    required: true
+
+runs:
+  using: docker
+  image: Dockerfile
