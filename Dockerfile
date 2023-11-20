@@ -1,4 +1,4 @@
-FROM ghcr.io/dev-bio/native-action-base:latest
+FROM ghcr.io/dev-bio/actions-base:latest
 
 COPY action action
 
