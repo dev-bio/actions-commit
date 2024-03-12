@@ -4,7 +4,7 @@ version = 3
 
 [[package]]
 name = "actions_commit"
-version = "1.0.3"
+version = "2.0.0"
 dependencies = [
  "actions_toolkit",
  "anyhow",
@@ -17,7 +17,7 @@ dependencies = [
 [[package]]
 name = "actions_toolkit"
 version = "0.1.0"
-source = "git+https://github.com/dev-bio/actions-toolkit.git?rev=70292bbecfa2e7b7bba860f4f854998dae6b554d#70292bbecfa2e7b7bba860f4f854998dae6b554d"
+source = "git+https://github.com/dev-bio/actions-toolkit.git?rev=c1a248bb6c111ad4f3d6272de440966fdbbf7e90#c1a248bb6c111ad4f3d6272de440966fdbbf7e90"
 dependencies = [
  "anyhow",
  "backoff",

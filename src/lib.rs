@@ -170,18 +170,19 @@ fn get_file_sha(path: impl AsRef<Path>) -> Result<Sha<'static>> {
 }
 
 fn fetch_unchanged(reference: HandleReference) -> Result<HashSet<PathBuf>> {
-    let mut unchanged = HashSet::new();
+    let working_directory = std::env::current_dir()?;
 
     let repository = reference.get_repository();
     let commit = reference.try_get_commit()?;
     let tree = commit.try_get_tree(false)?;
+    
+    let mut unchanged = HashSet::new();
+    let mut trees = Vec::new();
 
     for entry in tree.iter().cloned() {
-        let mut trees = Vec::new();
-        
         match entry {
             TreeEntry::Blob { path, sha, .. } => {
-                if sha == get_file_sha(path.as_path())? {
+                if sha == get_file_sha(working_directory.join(path.as_path()))? {
                     unchanged.insert(path);
                 }
             },
@@ -189,29 +190,34 @@ fn fetch_unchanged(reference: HandleReference) -> Result<HashSet<PathBuf>> {
                 trees.push((path.clone(), sha.clone()));
             },
             _ => continue,
-        };
-
-        use rayon::prelude::*;
-
-        let entries: HashSet<PathBuf> = trees.par_iter().filter_map(|(parent, sha)| {
-            let tree = repository.try_get_tree(sha.clone(), true).ok()?;
-
-            let mut entries = HashSet::new();
-            for entry in tree.iter().cloned() {
-                if let TreeEntry::Blob { path, sha, .. } = entry {
-                    if let Ok(file_sha) = get_file_sha(parent.join(path.as_path())) {
-                        if sha == file_sha { entries.insert(parent.join(path.as_path())); }
-                    }
-                }
-            }
-
-            Some(entries)
-        }).flatten()
-        .collect();
-
-        unchanged.extend(entries.into_iter());
+        }; 
     }
 
+    use rayon::prelude::*;
+    
+    let entries: Vec<(PathBuf, Sha<'static>)> = trees.par_iter().filter_map(|(parent, sha)| {
+        let tree = repository.try_get_tree(sha.clone(), true).ok()?;
+        
+        let mut entries = Vec::new();
+        for entry in tree.iter().cloned() {
+            if let TreeEntry::Blob { path, sha, .. } = entry {
+                entries.push((parent.join(path.as_path()), sha));
+            }
+        }
+        
+        Some(entries)
+    }).flatten()
+    .collect();
+    
+    let entries: HashSet<PathBuf> = entries.par_iter().cloned().filter_map(|(path, sha)| {
+        if let Ok(file_sha) = get_file_sha(working_directory.join(path.as_path())) {
+            if sha == file_sha { return Some(path) }
+        }
+
+        None
+    }).collect();
+
+    unchanged.extend(entries.into_iter());
 
     Ok(unchanged)
 }
