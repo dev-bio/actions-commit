@@ -15,3 +15,6 @@ path = "src/bin.rs"
 actions_toolkit = { git = "https://github.com/dev-bio/actions-toolkit.git", rev = "70292bbecfa2e7b7bba860f4f854998dae6b554d" }
 glob = { version = "0.3.1" }
 anyhow = "1.0.72"
+rayon = "1.9.0"
+sha1 = "0.10.6"
+hex = "0.4.3"

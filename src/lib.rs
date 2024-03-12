@@ -4,24 +4,22 @@ use std::{
 
     path::{
 
-        PathBuf,
-        Path,
+        Path, PathBuf
     },
 };
 
 use glob::{Pattern};
 
-use actions_toolkit::client::{
+use actions_toolkit::client::repository::{
 
-    repository::{
-
-        reference::{HandleReference}, 
-        tree::{TreeEntry},
-        sha::{Sha},
-    },
+    reference::{HandleReference}, 
+    tree::{TreeEntry},
+    sha::{Sha}, 
 };
 
 use anyhow::{Result};
+
+use sha1::{Sha1, Digest};
 
 use actions_toolkit::{core as atc};
 
@@ -149,6 +147,66 @@ impl<T: AsRef<[Pattern]>> CommitOptions<T> {
     }
 }
 
+fn get_file_sha(path: impl AsRef<Path>) -> Result<Sha<'static>> {
+    let mut hasher = Sha1::new();
+
+    hasher.update(std::fs::read({
+        path.as_ref()
+    })?);
+
+    Ok(Sha::from(hex::encode({
+        hasher.finalize()
+            .as_slice()
+    })))
+}
+
+fn fetch_unchanged(reference: HandleReference) -> Result<HashSet<PathBuf>> {
+    let mut unchanged = HashSet::new();
+
+    let repository = reference.get_repository();
+    let commit = reference.try_get_commit()?;
+    let tree = commit.try_get_tree(false)?;
+
+    for entry in tree.iter().cloned() {
+        let mut trees = Vec::new();
+        
+        match entry {
+            TreeEntry::Blob { path, sha, .. } => {
+                if sha == get_file_sha(path.as_path())? {
+                    unchanged.insert(path);
+                }
+            },
+            TreeEntry::Tree { path, sha, .. } => {
+                trees.push((path.clone(), sha.clone()));
+            },
+            _ => continue,
+        };
+
+        use rayon::prelude::*;
+
+        let entries: HashSet<PathBuf> = trees.par_iter().filter_map(|(parent, sha)| {
+            let tree = repository.try_get_tree(sha.clone(), true).ok()?;
+
+            let mut entries = HashSet::new();
+            for entry in tree.iter().cloned() {
+                if let TreeEntry::Blob { path, sha, .. } = entry {
+                    if let Ok(file_sha) = get_file_sha(dbg!(parent.join(path.as_path()))) {
+                        if sha == file_sha { entries.insert(parent.join(path.as_path())); }
+                    }
+                }
+            }
+
+            Some(entries)
+        }).flatten()
+        .collect();
+
+        unchanged.extend(entries.into_iter());
+    }
+
+
+    Ok(unchanged)
+}
+
 fn execute<'a, P: AsRef<[Pattern]>>(reference: HandleReference, options: CommitOptions<P>) -> Result<Sha<'static>> {
     let repository = reference.get_repository();
     let base = reference.try_get_commit()?;
@@ -165,10 +223,16 @@ fn execute<'a, P: AsRef<[Pattern]>>(reference: HandleReference, options: CommitO
 
     let mut entries = HashSet::new();
 
+    let unchanged = fetch_unchanged({
+        reference.clone()
+    })?;
+
     if let Some(include) = include {
         for pattern in include.as_ref().iter() {
             for entry in glob::glob(pattern.as_str())?.filter_map(|entry| entry.ok()) {
-                entries.insert(entry);
+                if unchanged.contains(entry.as_path()) { continue } else {
+                    entries.insert(entry);
+                }
             }
         }
     }
