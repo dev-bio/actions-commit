@@ -75,7 +75,7 @@ jobs:
           load: true
 
       - name: Scan image
-        uses: anchore/scan-action@24fd7c9060f3c96848dd1929fac8d796fb5ae4b4 # 3.3.6
+        uses: anchore/scan-action@3343887d815d7b07465f6fdcd395bd66508d486a # 3.6.4
         with:
 
           image: '${{ github.repository }}:latest'
