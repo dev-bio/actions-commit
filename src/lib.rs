@@ -150,9 +150,18 @@ impl<T: AsRef<[Pattern]>> CommitOptions<T> {
 fn get_file_sha(path: impl AsRef<Path>) -> Result<Sha<'static>> {
     let mut hasher = Sha1::new();
 
-    hasher.update(std::fs::read({
+    let prefix = format!("blob {length}\0", length = {
+        std::fs::metadata(path.as_ref())?.len()
+    });
+
+    let data = std::fs::read({
         path.as_ref()
-    })?);
+    })?;
+
+    hasher.update([
+        prefix.as_bytes(), 
+        data.as_slice()
+    ].concat());
 
     Ok(Sha::from(hex::encode({
         hasher.finalize()
@@ -190,7 +199,7 @@ fn fetch_unchanged(reference: HandleReference) -> Result<HashSet<PathBuf>> {
             let mut entries = HashSet::new();
             for entry in tree.iter().cloned() {
                 if let TreeEntry::Blob { path, sha, .. } = entry {
-                    if let Ok(file_sha) = get_file_sha(dbg!(parent.join(path.as_path()))) {
+                    if let Ok(file_sha) = get_file_sha(parent.join(path.as_path())) {
                         if sha == file_sha { entries.insert(parent.join(path.as_path())); }
                     }
                 }
