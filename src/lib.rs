@@ -320,8 +320,8 @@ fn execute<'a, P: AsRef<[Pattern]>>(reference: HandleReference, options: CommitO
 
         tree.push(TreeEntry::Blob { 
             sha: blob.get_sha().to_owned(), path, mode: match mode {
-                mode if (mode & 0b1000000001001001) > 0 => { 0o100755 },
-                mode if (mode & 0b1000000100100100) > 0 => { 0o100644 },
+                mode if (mode & 0o111) > 0 => { 0o100755 },
+                mode if (mode & 0o444) > 0 => { 0o100644 },
                 _ => {
                     
                     atc::log::error(format!("Unsupported mode: '{mode:o}'"));
