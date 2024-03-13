@@ -4,7 +4,8 @@ use std::{
 
     path::{
 
-        Path, PathBuf
+        PathBuf,
+        Path,
     },
 };
 
@@ -12,14 +13,19 @@ use glob::{Pattern};
 
 use actions_toolkit::client::repository::{
 
-    reference::{HandleReference}, 
+    reference::{HandleReference},
     tree::{TreeEntry},
-    sha::{Sha}, 
+    blob::{Blob},
+    sha::{Sha},
 };
 
 use anyhow::{Result};
 
-use sha1::{Sha1, Digest};
+use sha1::{
+    
+    Digest,
+    Sha1,
+};
 
 use actions_toolkit::{core as atc};
 
@@ -259,59 +265,74 @@ fn execute<'a, P: AsRef<[Pattern]>>(reference: HandleReference, options: CommitO
             }
         }
     }
-    
+
+    use rayon::prelude::*;
+
+    let blobs: Vec<Result<Option<(Blob, PathBuf, u32)>>> = {
+        entries.par_iter().cloned().map(|mut path| {
+            if path.is_symlink() || path.is_dir() {
+                return Ok(None)
+            }
+            
+            use std::os::unix::fs::{PermissionsExt};
+
+            let data = std::fs::read(path.as_path())?;
+            let mode = std::fs::metadata(path.as_path())?
+                .permissions()
+                .mode();
+
+            if let Some(source) = source { 
+                path = path.strip_prefix(source)?
+                    .to_owned()
+            }
+
+            if let (Some(true), Some(parent)) = (flatten, path.parent()) {
+                path = path.strip_prefix(parent)?
+                    .to_owned()
+            }
+
+            if let Some(target) = target { 
+                path = target.join(path)
+            }
+            
+            let blob = repository.try_create_binary_blob({
+                data.as_slice()
+            })?;
+
+            Ok(Some((blob, path, mode)))
+        }).collect()
+    };
+
     let mut lookup = HashSet::new();
-    let mut blobs = Vec::new();
-
-    for mut path in entries {
-        if path.is_dir() {
-            continue
-        }
-        
-        use std::os::unix::fs::{PermissionsExt};
-
-        let data = std::fs::read(path.as_path())?;
-        let mode = std::fs::metadata(path.as_path())?
-            .permissions()
-            .mode();
-
-        if let Some(source) = source { 
-            path = path.strip_prefix(source)?
-                .to_owned()
-        }
-
-        if let (Some(true), Some(parent)) = (flatten, path.parent()) {
-            path = path.strip_prefix(parent)?
-                .to_owned()
-        }
-
-        if let Some(target) = target { 
-            path = target.join(path)
-        }
+    let mut tree = Vec::new();
+    
+    for result in blobs {
+        let (blob, path, mode) = match result {
+            Err(error) => return Err(error),
+            Ok(Some(blob)) => blob,
+            Ok(None) => continue,
+        };
 
         if let Some(other) = lookup.replace(path.clone()) {
             atc::log::error(format!("Flattening results in conflict for paths: [ '{path}', '{other}' ]", path = path.display(), other = other.display()));
             anyhow::bail!("Flattening results in conflict for paths: [ '{path}', '{other}' ]", path = path.display(), other = other.display());
         }
 
-        atc::log::debug("Creating binary blob!");
-        
-        let Ok(blob) = repository.try_create_binary_blob(data.as_slice()) else {
-            atc::log::error(format!("Failed creating blob for path: '{path}'", path = path.display()));
-            anyhow::bail!("Failed creating blob for path: '{path}'", path = path.display());
-        };
-
-        atc::log::debug("Created blob: '{sha}'");
-
-        blobs.push(TreeEntry::Blob { 
-            sha: blob.get_sha().to_owned(), path, mode: {
-                (mode & 0xFFFFFFED) | 0o100000
+        tree.push(TreeEntry::Blob { 
+            sha: blob.get_sha().to_owned(), path, mode: match mode {
+                mode if (mode & 0b1000000001001001) > 0 => { 0o100755 },
+                mode if (mode & 0b1000000100100100) > 0 => { 0o100644 },
+                _ => {
+                    
+                    atc::log::error(format!("Unsupported mode: '{mode:o}'"));
+                    anyhow::bail!("Unsupported mode: '{mode:o}'");
+                }
             },
         });
     }
 
-    let tree = if blobs.is_empty() { base.try_get_tree(false)? } else {
-        repository.try_create_tree_with_base(base.clone(), blobs)?
+    let tree = if tree.is_empty() { base.try_get_tree(false)? } else {
+        repository.try_create_tree_with_base(base.clone(), tree)?
     };
 
     let commit = {
