@@ -12,7 +12,7 @@ name = "action"
 path = "src/bin.rs"
 
 [dependencies]
-actions_toolkit = { git = "https://github.com/dev-bio/actions-toolkit.git", rev = "c1a248bb6c111ad4f3d6272de440966fdbbf7e90" }
+actions_toolkit = { git = "https://github.com/dev-bio/actions-toolkit.git", rev = "9e0c6d70848a443081b6c521c8e2ae5b17b3cdd9" }
 glob = { version = "0.3.1" }
 anyhow = "1.0.72"
 rayon = "1.9.0"
