@@ -37,4 +37,4 @@ inputs:
 
 runs:
   using: docker
-  image: docker://ghcr.io/dev-bio/actions-commit@sha256:32574da8fcb4338db135745cff1652c555825e9837f1ba2140890cee0bc84d3d
+  image: docker://ghcr.io/dev-bio/actions-commit@sha256:f0ac50daa998b2fb2ffd3aabaea228c0931ea214bfdc6a104f3dbe32827aabd9
