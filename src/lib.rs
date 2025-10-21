@@ -294,6 +294,7 @@ fn execute<'a, P: AsRef<[Pattern]>>(reference: HandleReference, options: CommitO
     match always {
         Some(false) | None => {
             if entries.is_empty() {
+                atc::log::debug("No files changed, skipping commit.");
                 return Ok(base.get_sha()
                     .to_owned())
             }
