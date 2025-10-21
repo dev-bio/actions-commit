@@ -44,7 +44,7 @@ jobs:
             target/
 
       - name: Build Action
-        uses: docker://rust@sha256:bef59af02f103760cd57e8d6ccadf364954b0ae5e74ea7c7203d26744aeec051 # 1.71.0
+        uses: docker://rust@sha256:976303ceda00c5f21d6fe97500927285c7e0f6a2e8df71ae18a6c8e9b37550a1 # 1.90.0
         env:
 
           CARGO_HOME: '/github/home/'
