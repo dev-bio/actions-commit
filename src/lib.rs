@@ -223,9 +223,7 @@ fn fetch_unchanged(reference: HandleReference) -> Result<HashSet<PathBuf>> {
         }; 
     }
 
-    use rayon::prelude::*;
-    
-    let entries: Vec<(PathBuf, Sha<'static>)> = trees.par_iter().filter_map(|(parent, sha)| {
+    let entries: Vec<(PathBuf, Sha<'static>)> = trees.iter().filter_map(|(parent, sha)| {
         let tree = repository.try_get_tree(sha.clone(), true).ok()?;
         
         let mut entries = Vec::new();
@@ -238,6 +236,8 @@ fn fetch_unchanged(reference: HandleReference) -> Result<HashSet<PathBuf>> {
         Some(entries)
     }).flatten()
     .collect();
+    
+    use rayon::prelude::*;
     
     let entries: HashSet<PathBuf> = entries.par_iter().cloned().filter_map(|(path, sha)| {
         if let Ok(file_sha) = get_file_sha(working_directory.join(path.as_path())) {
@@ -310,10 +310,8 @@ fn execute<'a, P: AsRef<[Pattern]>>(reference: HandleReference, options: CommitO
         _ => (),
     };
 
-    use rayon::prelude::*;
-
     let blobs: Vec<Result<Option<(Blob, PathBuf, u32)>>> = {
-        included.par_iter().cloned().map(|mut path| {
+        included.iter().cloned().map(|mut path| {
             if path.is_symlink() || path.is_dir() {
                 return Ok(None)
             }

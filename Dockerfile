@@ -1,4 +1,4 @@
-FROM rust@sha256:976303ceda00c5f21d6fe97500927285c7e0f6a2e8df71ae18a6c8e9b37550a1
+FROM alpine@sha256:4b7ce07002c69e8f3d704a9c5d6fd3053be500b7f1c69fc0d80990c2ad8dd412
 
 RUN echo "runner:x:1001:121:runner:/home/runner:/sbin/nologin" >> /etc/passwd && \
     echo "runner:x:121:runner" >> /etc/group
