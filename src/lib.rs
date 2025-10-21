@@ -275,13 +275,19 @@ fn execute<'a, P: AsRef<[Pattern]>>(reference: HandleReference, options: CommitO
 
     if let Some(include) = include {
         for pattern in include.as_ref().iter() {
-            for entry in glob::glob(pattern.as_str())?.filter_map(|entry| entry.ok()) {
-                atc::log::debug(format!("glob: '{path}'", path = entry.display()));
+            'outer: for entry in glob::glob(pattern.as_str())?.filter_map(|entry| entry.ok()) {
                 atc::log::debug(format!("unchanged: '{path}'", path = entry.display()));
-                if unchanged.contains(entry.as_path()) { continue } else {
-                    atc::log::debug(format!("including: '{path}'", path = entry.display()));
-                    entries.insert(entry);
+                atc::log::debug(format!("glob: '{path}'", path = entry.display()));
+
+                for unchanged in unchanged.iter() {
+                    if unchanged.canonicalize()? == entry.canonicalize()? {
+                        continue 'outer
+                    }
                 }
+
+                atc::log::debug(format!("including: '{path}'", path = entry.display()));
+                
+                entries.insert(entry);
             }
         }
     }
