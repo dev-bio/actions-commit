@@ -24,13 +24,13 @@ fn main() -> Result<()> {
 
     let include: Option<Vec<Pattern>> = atc::get_multiline_input("include").and_then(|lines| {
         Some(lines.iter().filter_map(|line| {
-            Pattern::new(line).ok()
+            Pattern::new(line.trim()).ok()
         }).collect())
     });
 
     let exclude: Option<Vec<Pattern>> = atc::get_multiline_input("exclude").and_then(|lines| {
         Some(lines.iter().filter_map(|line| {
-            Pattern::new(line).ok()
+            Pattern::new(line.trim()).ok()
         }).collect())
     });
 

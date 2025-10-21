@@ -267,42 +267,41 @@ fn execute<'a, P: AsRef<[Pattern]>>(reference: HandleReference, options: CommitO
         force,
     } = options;
 
-    let mut entries = HashSet::new();
+    let mut excluded = HashSet::new();
+    let mut included = HashSet::new();
 
     let unchanged = fetch_unchanged({
         reference.clone()
     })?;
 
-    if let Some(include) = include {
-        for pattern in include.as_ref().iter() {
-            'outer: for entry in glob::glob(pattern.as_str())?.filter_map(|entry| entry.ok()) {
-                atc::log::debug(format!("unchanged: '{path}'", path = entry.display()));
-                atc::log::debug(format!("glob: '{path}'", path = entry.display()));
-
-                for unchanged in unchanged.iter() {
-                    if unchanged.canonicalize()? == entry.canonicalize()? {
-                        continue 'outer
-                    }
-                }
-
-                atc::log::debug(format!("including: '{path}'", path = entry.display()));
-                
-                entries.insert(entry);
-            }
-        }
-    }
-
     if let Some(exclude) = exclude {
         for pattern in exclude.as_ref().iter() {
             for entry in glob::glob(pattern.as_str())?.filter_map(|entry| entry.ok()) {
-                entries.remove(entry.as_path());
+                excluded.insert(entry);
             }
         }
     }
 
+    if let Some(include) = include {
+        for pattern in include.as_ref().iter() {
+            for entry in glob::glob(pattern.as_str())?.filter_map(|entry| entry.ok()) {
+                atc::log::debug(format!("glob: '{path}'", path = entry.display()));
+
+                if unchanged.contains(&entry) { continue } else {
+                    if excluded.contains(&entry) { continue } else {
+                        atc::log::debug(format!("including: '{path}'", path = entry.display()));
+                        included.insert(entry);
+                    }
+                }
+            }
+        }
+    }
+
+    atc::log::debug(format!("included entries: {count}", count = included.len()));
+
     match always {
         Some(false) | None => {
-            if entries.is_empty() {
+            if included.is_empty() {
                 atc::log::debug("No files changed, skipping commit.");
                 return Ok(base.get_sha()
                     .to_owned())
@@ -314,7 +313,7 @@ fn execute<'a, P: AsRef<[Pattern]>>(reference: HandleReference, options: CommitO
     use rayon::prelude::*;
 
     let blobs: Vec<Result<Option<(Blob, PathBuf, u32)>>> = {
-        entries.par_iter().cloned().map(|mut path| {
+        included.par_iter().cloned().map(|mut path| {
             if path.is_symlink() || path.is_dir() {
                 return Ok(None)
             }
