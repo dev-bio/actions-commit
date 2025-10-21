@@ -10,6 +10,9 @@ inputs:
   github-reference:
     description: 'Commit reference to use as parent.'
     default: ${{ github.ref }}
+  always:
+    description: 'Always create a commit, even if no files are changed.'
+    default: false
   flatten:
     description: 'Discards directory structure, placing all files in the target directory.'
     default: false

@@ -48,6 +48,7 @@ fn main() -> Result<()> {
 
     let reference = repository.try_get_reference(reference)?;
     let result = actions_commit::commit(reference, CommitOptions::new(message)?
+        .with_always_commit(atc::get_boolean_input("always"))
         .with_flattening(atc::get_boolean_input("flatten"))
         .with_force(atc::get_boolean_input("force"))
         .with_source_directory(atc::get_input("source"))

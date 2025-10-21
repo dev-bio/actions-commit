@@ -32,6 +32,7 @@ use actions_toolkit::{core as atc};
 #[derive(Default, Clone, Debug)]
 pub struct CommitOptions<T: AsRef<[Pattern]>> {
     pub(crate) message: String,
+    pub(crate) always: Option<bool>,
     pub(crate) source: Option<PathBuf>,
     pub(crate) target: Option<PathBuf>,
     pub(crate) include: Option<T>,
@@ -47,6 +48,7 @@ impl<T: AsRef<[Pattern]>> CommitOptions<T> {
 
         Ok(Self {
             message,
+            always: Some(false),
             source: None,
             target: None,
             include: None,
@@ -56,99 +58,121 @@ impl<T: AsRef<[Pattern]>> CommitOptions<T> {
         })
     }
 
+    pub fn with_always_commit(self, always: Option<bool>) -> Self {
+        let CommitOptions { message, source, target, include, exclude, flatten, force, .. } = self;
+
+        CommitOptions { 
+            
+            message, 
+            always, 
+            source, 
+            target, 
+            include,
+            exclude,
+            flatten,
+            force, 
+        }
+    }
+
     pub fn with_target_directory(self, target: Option<impl AsRef<Path>>) -> Self {
-        let CommitOptions { message, source, include, exclude, flatten, force, .. } = self;
+        let CommitOptions { message, always, source, include, exclude, flatten, force, .. } = self;
         let target = target.map(|path| {
             path.as_ref().to_path_buf()
         });
 
         CommitOptions { 
             
-            message,
+            message, 
+            always, 
             source, 
             target, 
             include,
             exclude,
             flatten,
-            force,
+            force, 
         }
     }
 
     pub fn with_source_directory(self, source: Option<impl AsRef<Path>>) -> Self {
-        let CommitOptions { message, target, include, exclude, flatten, force, .. } = self;
+        let CommitOptions { message, always, target, include, exclude, flatten, force, .. } = self;
         let source = source.map(|path| {
             path.as_ref().to_path_buf()
         });
 
         CommitOptions { 
 
-            message,
+            message, 
+            always, 
             source, 
             target, 
-            include,
-            exclude,
-            flatten,
-            force,
+            include, 
+            exclude, 
+            flatten, 
+            force, 
         }
     }
 
     pub fn with_flattening(self, flatten: Option<bool>) -> Self {
-        let CommitOptions { message, source, target, include, exclude, force, .. } = self;
+        let CommitOptions { message, always, source, target, include, exclude, force, .. } = self;
 
         CommitOptions { 
             
-            message,
+            message, 
+            always, 
             source, 
             target, 
-            include,
-            exclude,
-            flatten,
-            force,
+            include, 
+            exclude, 
+            flatten, 
+            force, 
         }
     }
 
     pub fn with_force(self, force: Option<bool>) -> Self {
-        let CommitOptions { message, source, target, include, exclude, flatten, .. } = self;
+        let CommitOptions { message, always, source, target, include, exclude, flatten, .. } = self;
 
         CommitOptions { 
             
-            message,
+            message, 
+            always, 
             source, 
             target, 
-            include,
-            exclude,
-            flatten,
-            force,
+            include, 
+            exclude, 
+            flatten, 
+            force, 
         }
     }
 
     pub fn with_include(self, include: Option<T>) -> Self {
-        let CommitOptions { message, source, target, exclude, flatten, force, .. } = self;
+        let CommitOptions { message, always, source, target, exclude, flatten, force, .. } = self;
 
         CommitOptions { 
             
-            message,
+            message, 
+            always, 
             source, 
             target, 
-            include,
-            exclude,
-            flatten,
-            force,
+            include, 
+            exclude, 
+            flatten, 
+            force, 
         }
     }
 
     pub fn with_exclude(self, exclude: Option<T>) -> Self {
-        let CommitOptions { message, source, target, include, flatten, force, .. } = self;
+        let CommitOptions { message, always, source, target, include, flatten, force, .. } = self;
 
         CommitOptions { 
             
-            message,
+            message, 
+            always, 
             source, 
             target, 
-            include,
-            exclude,
-            flatten,
-            force,
+            include, 
+            exclude, 
+            flatten, 
+            force, 
         }
     }
 }
@@ -234,6 +258,7 @@ fn execute<'a, P: AsRef<[Pattern]>>(reference: HandleReference, options: CommitO
 
     let CommitOptions { 
         message,
+        always,
         ref source, 
         ref target, 
         include,
@@ -265,6 +290,16 @@ fn execute<'a, P: AsRef<[Pattern]>>(reference: HandleReference, options: CommitO
             }
         }
     }
+
+    match always {
+        Some(false) | None => {
+            if entries.is_empty() {
+                return Ok(base.get_sha()
+                    .to_owned())
+            }
+        },
+        _ => (),
+    };
 
     use rayon::prelude::*;
 
