@@ -168,7 +168,7 @@ jobs:
           push: true
 
       - name: Generate Manifest
-        uses: anchore/sbom-action@78fc58e266e87a38d4194b2137a3d4e9bcaf7ca1 # 0.14.3
+        uses: anchore/sbom-action@aa0e114b2e19480f157109b9922bda359bd98b90 # 0.20.8
         with:
 
           image: 'ghcr.io/${{ github.repository }}@${{ steps.build-push.outputs.digest }}'
