@@ -13,7 +13,7 @@ path = "src/bin.rs"
 
 [dependencies]
 actions_toolkit = { git = "https://github.com/dev-bio/actions-toolkit.git", rev = "9e0c6d70848a443081b6c521c8e2ae5b17b3cdd9" }
-glob = { version = "0.3.1" }
+glob = { version = "0.3.3" }
 anyhow = "1.0.72"
 rayon = "1.9.0"
 sha1 = "0.10.6"
